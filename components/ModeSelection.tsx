@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Zap, BookOpen } from 'lucide-react';
@@ -30,9 +31,9 @@ const ModeSelection: React.FC<ModeSelectionProps> = ({ onSelect }) => {
         animate={{ opacity: 1, y: 0 }}
         className="text-center mb-12 space-y-4"
       >
-        <h2 className="text-2xl font-serif text-morandi-espresso tracking-widest">选择回顾模式</h2>
+        <h2 className="text-2xl font-serif text-morandi-espresso tracking-widest">选择模式</h2>
         <p className="text-xs text-morandi-taupe font-light tracking-wide uppercase">
-          Choose Your Reflection Mode
+          Choose Mode
         </p>
       </motion.div>
 

@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCcw, Copy, Check, ChevronLeft, ChevronRight, Home } from 'lucide-react';
-import { UserAnswer, Topic } from '../types';
+import { UserAnswer } from '../types';
 import TopicIcon from './TopicIcon';
 import { TOPICS } from '../constants';
 
@@ -15,7 +16,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
   const [copied, setCopied] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Helper to find Topic ID by title (since UserAnswer stores title)
   const getTopicIdByTitle = (title: string) => {
     return TOPICS.find(t => t.titleCn === title)?.id || 't1';
   };
@@ -42,6 +42,15 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
   const prevAnswer = () => {
     setSelectedIndex((prev) => (prev - 1 + answers.length) % answers.length);
   };
+
+  if (!answers || answers.length === 0) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-morandi-bg">
+              <p className="text-morandi-espresso mb-4">暂无回答记录</p>
+              <button onClick={onGoHome} className="px-6 py-2 bg-morandi-espresso text-white rounded-full">返回主页</button>
+          </div>
+      )
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center py-12 px-4 bg-morandi-bg">
@@ -81,7 +90,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
           className="w-full max-w-sm bg-white shadow-2xl rounded-sm overflow-hidden border border-morandi-latte relative"
           id="summary-card"
         >
-          {/* Card Header */}
           <div className="h-2 bg-morandi-espresso" />
           
           <div className="p-8 flex flex-col items-center text-center space-y-6">
@@ -96,7 +104,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
 
             <div className="w-full h-px bg-morandi-sand my-4" />
 
-            {/* Content */}
             <div className="text-left w-full space-y-4">
               <p className="text-xs text-morandi-mocha font-serif leading-relaxed">Q: {currentAnswer.questionText}</p>
               <div className="min-h-[120px] flex items-center">
@@ -106,7 +113,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
               </div>
             </div>
 
-            {/* Decorative Footer inside card */}
             <div className="pt-8 w-full flex justify-center opacity-30 text-morandi-espresso">
                <span className="w-1 h-1 rounded-full bg-current mx-1"></span>
                <span className="w-1 h-1 rounded-full bg-current mx-1"></span>
@@ -114,7 +120,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
             </div>
           </div>
 
-          {/* Card Footer */}
           <div className="bg-morandi-sand p-4 text-center border-t border-morandi-latte">
             <p className="text-[10px] text-morandi-taupe tracking-widest uppercase">2024 Year End Reflection</p>
           </div>
@@ -128,7 +133,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
         transition={{ delay: 0.8 }}
         className="mt-10 flex space-x-6 md:space-x-8"
       >
-        {/* Copy */}
         <button 
           onClick={handleCopy}
           className="flex flex-col items-center space-y-2 text-morandi-taupe hover:text-morandi-espresso transition-colors group"
@@ -139,7 +143,6 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
           <span className="text-[10px] tracking-widest">{copied ? '已复制' : '复制文本'}</span>
         </button>
 
-        {/* Restart (Same Mode) */}
         <button 
           onClick={onRestart}
           className="flex flex-col items-center space-y-2 text-morandi-taupe hover:text-morandi-espresso transition-colors group"
@@ -147,10 +150,9 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
           <div className="p-4 bg-white rounded-full shadow-sm group-hover:shadow-md transition-shadow">
             <RefreshCcw size={20} strokeWidth={1.5} />
           </div>
-          <span className="text-[10px] tracking-widest">再抽一次</span>
+          <span className="text-[10px] tracking-widest">再写一篇</span>
         </button>
 
-        {/* Go Home */}
          <button 
           onClick={onGoHome}
           className="flex flex-col items-center space-y-2 text-morandi-taupe hover:text-morandi-espresso transition-colors group"

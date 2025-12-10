@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import FortuneShake from './components/FortuneShake';
 import ModeSelection from './components/ModeSelection';
 import QuestionEditor from './components/QuestionEditor';
 import SummaryCard from './components/SummaryCard';
+import TopicTOC from './components/TopicTOC';
 import { TOPICS } from './constants';
 import { AppView, ModeType, UserAnswer, SessionItem } from './types';
 import Header from './components/Header';
@@ -13,9 +15,13 @@ const App: React.FC = () => {
   const [view, setView] = useState<AppView>('welcome');
   const [mode, setMode] = useState<ModeType>('quick');
   
-  // The queue of questions to ask
+  // State for Deep Mode flow
+  const [completedTopicIds, setCompletedTopicIds] = useState<string[]>([]);
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+
+  // The queue of questions to ask for the CURRENT session
   const [activeSessionItems, setActiveSessionItems] = useState<SessionItem[]>([]);
-  // The answers collected
+  // The aggregated answers collected
   const [userAnswers, setUserAnswers] = useState<UserAnswer[]>([]);
 
   // 1. Welcome -> Mode Select
@@ -23,10 +29,34 @@ const App: React.FC = () => {
     setView('mode_select');
   };
 
-  // 2. Mode Select -> Shake
+  // 2. Mode Select -> Routing
   const handleModeSelect = (selectedMode: ModeType) => {
     setMode(selectedMode);
+    // Reset state for new session
+    setCompletedTopicIds([]);
+    setUserAnswers([]);
+    setSelectedTopicId(null);
+    
+    if (selectedMode === 'deep') {
+      // Deep mode goes to Table of Contents first
+      setView('toc');
+    } else {
+      // Quick mode goes directly to Shake ritual to draw topic
+      setView('shake');
+    }
+  };
+
+  // 2b. TOC -> Shake (Deep Mode Ritual)
+  const handleTopicSelect = (topicId: string) => {
+    setSelectedTopicId(topicId);
     setView('shake');
+  };
+
+  // TOC -> Exit (Back to Mode Select)
+  const handleTOCExit = () => {
+    setCompletedTopicIds([]);
+    setUserAnswers([]);
+    setView('mode_select');
   };
 
   // 3. Shake -> Editor
@@ -34,7 +64,7 @@ const App: React.FC = () => {
     let items: SessionItem[] = [];
 
     if (mode === 'quick') {
-        // Quick Mode: Pick 1 random topic, select random 3-5 questions
+        // Quick Mode: Pick 1 random topic
         const randomIndex = Math.floor(Math.random() * TOPICS.length);
         const selectedTopic = TOPICS[randomIndex];
         // Shuffle questions and take 3
@@ -45,39 +75,69 @@ const App: React.FC = () => {
             topic: selectedTopic
         }));
     } else {
-        // Deep Mode: All 12 topics, ALL questions (60 total)
-        // Order by topic sequence
-        TOPICS.forEach(topic => {
-            topic.questions.forEach(q => {
-                items.push({
-                    question: q,
-                    topic: topic
-                });
-            });
-        });
+        // Deep Mode: Use the SELECTED topic
+        const topic = TOPICS.find(t => t.id === selectedTopicId);
+        if (topic) {
+            items = topic.questions.map(q => ({
+                question: q,
+                topic: topic
+            }));
+        }
     }
     
     setActiveSessionItems(items);
     setView('editor');
   };
 
-  // 4. Editor -> Summary
-  const handleReflectionComplete = (answers: UserAnswer[]) => {
-    setUserAnswers(answers);
+  // 4. Editor -> Completion
+  const handleReflectionComplete = (newAnswers: UserAnswer[]) => {
+    // Merge new answers
+    setUserAnswers(prev => [...prev, ...newAnswers]);
+
+    if (mode === 'deep' && selectedTopicId) {
+        // Mark topic as complete
+        setCompletedTopicIds(prev => [...prev, selectedTopicId]);
+        // Return to TOC
+        setView('toc');
+    } else {
+        // Quick mode: Go directly to summary
+        setView('summary');
+    }
+  };
+
+  // View Summary from TOC (Deep Mode)
+  const handleViewSummary = () => {
     setView('summary');
+  };
+
+  // Editor -> Exit (Back to Mode Select)
+  const handleEditorExit = () => {
+     // Clear session data and immediately return to mode selection without blocking confirm dialog
+     setActiveSessionItems([]);
+     setSelectedTopicId(null);
+     setView('mode_select');
   };
 
   // 5. Summary -> Restart (Same Mode)
   const handleRestart = () => {
+    // For restart, we clear answers
     setUserAnswers([]);
+    setCompletedTopicIds([]);
+    setSelectedTopicId(null);
     setActiveSessionItems([]);
-    setView('shake'); // Go back to shake to draw another or restart deep mode flow
+    
+    if (mode === 'deep') {
+      setView('toc');
+    } else {
+      setView('shake');
+    }
   };
 
   // 6. Summary -> Home (Mode Select)
   const handleGoHome = () => {
     setUserAnswers([]);
     setActiveSessionItems([]);
+    setCompletedTopicIds([]);
     setView('mode_select');
   };
 
@@ -98,7 +158,7 @@ const App: React.FC = () => {
             <div className="flex-grow flex flex-col items-center justify-center px-6 text-center space-y-8">
                <p className="max-w-md text-morandi-taupe font-light leading-relaxed">
                  在这个喧嚣的世界里，留出片刻宁静。<br/>
-                 通过猫咪与风铃的指引，开启一场与自我的深度对话。
+                 伴随树叶掉落的回响，开启一场与自我的深度对话。
                  <br/><br/>
                  <span className="text-xs opacity-60">* 您的回答仅保存在本地，隐私安全。</span>
                </p>
@@ -125,6 +185,23 @@ const App: React.FC = () => {
           </motion.div>
         )}
 
+        {/* Table of Contents (Deep Mode Only) */}
+        {view === 'toc' && (
+          <motion.div
+            key="toc"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <TopicTOC 
+                completedTopicIds={completedTopicIds}
+                onSelectTopic={handleTopicSelect}
+                onFinish={handleViewSummary}
+                onExit={handleTOCExit}
+            />
+          </motion.div>
+        )}
+
         {/* Shake View */}
         {view === 'shake' && (
           <motion.div
@@ -135,12 +212,16 @@ const App: React.FC = () => {
             transition={{ duration: 0.8 }}
             className="min-h-screen w-full flex items-center justify-center bg-morandi-bg"
           >
-            <FortuneShake onDrawComplete={handleDrawComplete} />
+            <FortuneShake 
+              onDrawComplete={handleDrawComplete} 
+              mode={mode}
+              isDeepModeSelected={!!selectedTopicId}
+            />
           </motion.div>
         )}
 
         {/* Editor View */}
-        {view === 'editor' && activeSessionItems.length > 0 && (
+        {view === 'editor' && (
           <motion.div
             key="editor"
             initial={{ opacity: 0, y: 50 }}
@@ -152,6 +233,7 @@ const App: React.FC = () => {
             <QuestionEditor 
               sessionItems={activeSessionItems}
               onComplete={handleReflectionComplete} 
+              onExit={handleEditorExit}
             />
           </motion.div>
         )}

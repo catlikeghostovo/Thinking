@@ -1,15 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, SkipForward, Sparkles, Save } from 'lucide-react';
+import { ArrowRight, SkipForward, Sparkles, Save, LogOut } from 'lucide-react';
 import { SessionItem, UserAnswer } from '../types';
 import TopicIcon from './TopicIcon';
 
 interface QuestionEditorProps {
   sessionItems: SessionItem[];
   onComplete: (answers: UserAnswer[]) => void;
+  onExit: () => void;
 }
 
-const QuestionEditor: React.FC<QuestionEditorProps> = ({ sessionItems, onComplete }) => {
+const QuestionEditor: React.FC<QuestionEditorProps> = ({ sessionItems, onComplete, onExit }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
   const [currentText, setCurrentText] = useState('');
@@ -20,14 +22,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ sessionItems, onComplet
   
   const progress = ((currentIndex + 1) / sessionItems.length) * 100;
 
-  // Reset text when question changes
   useEffect(() => {
     setCurrentText('');
     setShowHint(false);
   }, [currentIndex]);
 
   const handleNext = (skipped: boolean = false) => {
-    // Prepare current answer object
     const answerObj: UserAnswer = {
       questionId: question.id,
       questionText: question.text,
@@ -42,7 +42,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ sessionItems, onComplet
       setAnswers(updatedAnswers);
       setCurrentIndex(prev => prev + 1);
     } else {
-      // Completed all questions
       onComplete(updatedAnswers);
     }
   };
@@ -51,18 +50,28 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ sessionItems, onComplet
     <div className="min-h-screen flex flex-col max-w-2xl mx-auto px-6 py-8 relative transition-colors duration-700"
          style={{ backgroundColor: topic.color + '20' }}
     >
-      {/* Progress Bar */}
-      <div className="w-full h-1 bg-gray-200/50 rounded-full mb-8 overflow-hidden">
-        <motion.div 
-          className="h-full bg-morandi-espresso"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.5 }}
-        />
+      {/* Top Nav */}
+      <div className="flex items-center justify-between mb-8 relative z-20">
+         <div className="flex-grow h-1 bg-gray-200/50 rounded-full overflow-hidden mr-6">
+            <motion.div 
+              className="h-full bg-morandi-espresso"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.5 }}
+            />
+         </div>
+         
+         <button 
+           onClick={onExit}
+           className="flex items-center space-x-1 px-3 py-1.5 text-morandi-taupe hover:text-morandi-espresso bg-white/50 hover:bg-morandi-latte/20 rounded-full transition-colors cursor-pointer"
+         >
+           <LogOut size={14} strokeWidth={1.5} />
+           <span className="text-[10px] tracking-widest">返回模式选择</span>
+         </button>
       </div>
 
-      {/* Header (Topic Info) */}
-      <div className="flex items-center space-x-4 mb-12 opacity-90">
+      {/* Header */}
+      <div className="flex items-center space-x-4 mb-10 opacity-90">
         <div className="w-10 h-10 text-morandi-espresso">
           <TopicIcon topicId={topic.id} />
         </div>
@@ -75,7 +84,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ sessionItems, onComplet
         </div>
       </div>
 
-      {/* Question Area */}
+      {/* Question */}
       <AnimatePresence mode="wait">
         <motion.div
           key={question.id}
@@ -83,13 +92,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ sessionItems, onComplet
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.5 }}
-          className="flex-grow flex flex-col"
+          className="flex-grow flex flex-col relative z-10"
         >
           <h2 className="text-xl md:text-2xl font-serif text-morandi-espresso leading-relaxed mb-8">
             {question.text}
           </h2>
 
-          {/* Inspiration Hint */}
           <div className="mb-6">
             <button 
               onClick={() => setShowHint(!showHint)}
@@ -107,14 +115,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ sessionItems, onComplet
                   className="overflow-hidden"
                 >
                   <p className="pt-3 text-sm text-morandi-taupe font-light italic bg-white/60 p-4 rounded-md mt-2 border-l-2 border-morandi-latte">
-                    {question.hint || "试着闭上眼睛，回到那个瞬间..."}
+                    {question.hint || "试着闭上眼睛，回到那个瞬间，感受气味、声音..."}
                   </p>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Editor */}
           <textarea
             className="w-full flex-grow bg-transparent resize-none outline-none font-sans text-lg text-morandi-espresso placeholder-morandi-latte leading-loose min-h-[300px]"
             placeholder="写下你的想法..."
@@ -126,7 +133,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ sessionItems, onComplet
       </AnimatePresence>
 
       {/* Actions */}
-      <div className="mt-8 flex items-center justify-between border-t border-morandi-latte/30 pt-6">
+      <div className="mt-8 flex items-center justify-between border-t border-morandi-latte/30 pt-6 relative z-10">
         <button 
           onClick={() => handleNext(true)}
           className="flex items-center text-morandi-taupe hover:text-morandi-espresso text-sm font-light transition-colors"

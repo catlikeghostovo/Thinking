@@ -1,3 +1,4 @@
+
 export interface Question {
   id: number;
   text: string;
@@ -13,7 +14,7 @@ export interface Topic {
   questions: Question[];
 }
 
-export type AppView = 'welcome' | 'mode_select' | 'shake' | 'editor' | 'summary';
+export type AppView = 'welcome' | 'mode_select' | 'toc' | 'shake' | 'editor' | 'summary';
 
 export type ModeType = 'quick' | 'deep';
 
