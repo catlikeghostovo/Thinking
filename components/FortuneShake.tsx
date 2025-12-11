@@ -37,12 +37,12 @@ const FortuneShake: React.FC<FortuneShakeProps> = ({ onDrawComplete, mode, isDee
     // Floating in air (waiting to fall)
     idle: {
       x: 150,
-      y: 60,
-      rotate: 0,
+      y: [50, 70],
+      rotate: [-5, 5],
       scale: 1,
       transition: {
-        y: { duration: 3, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", from: 50, to: 70 },
-        rotate: { duration: 5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", from: -5, to: 5 }
+        y: { duration: 3, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" },
+        rotate: { duration: 5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }
       }
     },
     // The Fall
@@ -165,7 +165,7 @@ const FortuneShake: React.FC<FortuneShakeProps> = ({ onDrawComplete, mode, isDee
             className="flex items-center space-x-2 text-morandi-mocha"
           >
             <span className="text-sm font-serif tracking-[0.2em] animate-pulse">
-                叶片掉落...
+                落叶归根...
             </span>
           </motion.div>
         ) : hasLanded ? (

@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCcw, Copy, Check, ChevronLeft, ChevronRight, Home } from 'lucide-react';
+import { RefreshCcw, Copy, Check, ChevronLeft, ChevronRight, Home, Sparkles, Loader2 } from 'lucide-react';
+import { GoogleGenAI, Type } from "@google/genai";
 import { UserAnswer } from '../types';
 import TopicIcon from './TopicIcon';
 import { TOPICS } from '../constants';
@@ -12,9 +12,19 @@ interface SummaryCardProps {
   onGoHome: () => void;
 }
 
+interface AIAnalysisResult {
+  keywords: string[];
+  summary: string;
+}
+
 const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome }) => {
   const [copied, setCopied] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  
+  // AI State
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiResult, setAiResult] = useState<AIAnalysisResult | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const getTopicIdByTitle = (title: string) => {
     return TOPICS.find(t => t.titleCn === title)?.id || 't1';
@@ -29,7 +39,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
   const currentTopicEn = getTopicEnByTitle(currentAnswer.topicTitle);
 
   const handleCopy = () => {
-    const textToCopy = `【${currentAnswer.topicTitle}】\nQ: ${currentAnswer.questionText}\nA: ${currentAnswer.answer}\n\n#2024YearEndReflection`;
+    const textToCopy = `【${currentAnswer.topicTitle}】\nQ: ${currentAnswer.questionText}\nA: ${currentAnswer.answer}\n\n#2025YearEndReflection`;
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -41,6 +51,54 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
 
   const prevAnswer = () => {
     setSelectedIndex((prev) => (prev - 1 + answers.length) % answers.length);
+  };
+
+  // Gemini API Call
+  const generateInsight = async () => {
+    if (isAnalyzing || aiResult) return;
+    setIsAnalyzing(true);
+    setAiError(null);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
+      // Prepare prompt data
+      const dialogueText = answers.map((a, i) => `Q${i+1}: ${a.questionText}\nA: ${a.answer}`).join("\n\n");
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `你是一位温柔、治愈的倾听者。请阅读以下用户的年终回顾问答：\n\n${dialogueText}\n\n请完成以下任务：\n1. 提取 3-5 个最能代表用户这一年心境的“年度关键词”。\n2. 用温暖、充满哲思的莫兰迪风格（柔和、包容、富有洞察力）写一段 100 字左右的年度总结，给予用户鼓励和肯定。`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              keywords: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: "3-5 distinct keywords representing the year."
+              },
+              summary: {
+                type: Type.STRING,
+                description: "A warm, insightful summary paragraph."
+              }
+            }
+          }
+        }
+      });
+
+      if (response.text) {
+        const result = JSON.parse(response.text) as AIAnalysisResult;
+        setAiResult(result);
+      } else {
+        throw new Error("No response from AI");
+      }
+    } catch (err) {
+      console.error(err);
+      setAiError("无法连接到灵感源泉，请稍后再试。");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   if (!answers || answers.length === 0) {
@@ -87,7 +145,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.3 }}
-          className="w-full max-w-sm bg-white shadow-2xl rounded-sm overflow-hidden border border-morandi-latte relative"
+          className="w-full max-w-sm bg-white shadow-2xl rounded-sm overflow-hidden border border-morandi-latte relative z-10"
           id="summary-card"
         >
           <div className="h-2 bg-morandi-espresso" />
@@ -121,7 +179,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
           </div>
 
           <div className="bg-morandi-sand p-4 text-center border-t border-morandi-latte">
-            <p className="text-[10px] text-morandi-taupe tracking-widest uppercase">2024 Year End Reflection</p>
+            <p className="text-[10px] text-morandi-taupe tracking-widest uppercase">2025 Year End Reflection</p>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -131,7 +189,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 }}
-        className="mt-10 flex space-x-6 md:space-x-8"
+        className="mt-8 flex space-x-6 md:space-x-8"
       >
         <button 
           onClick={handleCopy}
@@ -162,6 +220,75 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ answers, onRestart, onGoHome 
           </div>
           <span className="text-[10px] tracking-widest">返回模式</span>
         </button>
+      </motion.div>
+
+      {/* AI Insight Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1 }}
+        className="w-full max-w-sm mt-12 mb-8"
+      >
+        <div className="w-full h-px bg-morandi-latte opacity-30 mb-8" />
+        
+        {!aiResult && !isAnalyzing && (
+          <div className="text-center">
+            <button 
+              onClick={generateInsight}
+              className="group flex items-center justify-center space-x-2 mx-auto px-6 py-3 bg-gradient-to-r from-morandi-cream to-morandi-sand hover:to-morandi-latte border border-morandi-latte rounded-full transition-all duration-500 shadow-sm hover:shadow-md"
+            >
+              <Sparkles size={16} className="text-morandi-mocha group-hover:text-morandi-espresso transition-colors" />
+              <span className="text-xs font-serif text-morandi-espresso tracking-widest">生成 AI 年度洞察</span>
+            </button>
+            <p className="text-[10px] text-morandi-taupe mt-3 opacity-60">基于您的回答生成个性化总结</p>
+          </div>
+        )}
+
+        {isAnalyzing && (
+          <div className="flex flex-col items-center justify-center space-y-3 py-6">
+            <Loader2 size={24} className="text-morandi-mocha animate-spin" />
+            <p className="text-xs font-serif text-morandi-taupe tracking-widest animate-pulse">正在编织您的年度记忆...</p>
+          </div>
+        )}
+
+        {aiError && (
+          <div className="text-center py-4">
+             <p className="text-xs text-red-400 font-light mb-2">{aiError}</p>
+             <button onClick={generateInsight} className="text-[10px] underline text-morandi-taupe">重试</button>
+          </div>
+        )}
+
+        {aiResult && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white/60 backdrop-blur-sm border border-morandi-latte/50 rounded-lg p-6 space-y-6"
+          >
+             {/* Keywords */}
+             <div className="flex flex-col items-center space-y-3">
+                <span className="text-[10px] uppercase tracking-widest text-morandi-taupe">年度关键词</span>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {aiResult.keywords.map((kw, i) => (
+                    <span key={i} className="px-3 py-1 bg-morandi-espresso text-white text-xs font-serif tracking-wider rounded-full shadow-sm">
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+             </div>
+
+             {/* Summary */}
+             <div className="space-y-3">
+                <div className="flex items-center justify-center space-x-2 opacity-50">
+                  <div className="h-px w-8 bg-morandi-taupe" />
+                  <Sparkles size={10} className="text-morandi-taupe" />
+                  <div className="h-px w-8 bg-morandi-taupe" />
+                </div>
+                <p className="text-sm text-morandi-espresso font-light leading-loose text-justify font-serif">
+                  {aiResult.summary}
+                </p>
+             </div>
+          </motion.div>
+        )}
       </motion.div>
     </div>
   );
